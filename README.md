@@ -28,3 +28,10 @@ workspace inspection, and package-manager build/test jobs.
 Set `DEVOS_RUNTIME_WORKSPACE_ROOTS` to the folders that may contain DevOS
 projects. Runtime resolves real filesystem paths and rejects requests outside
 these roots, including paths reached through symlinks.
+
+## Local Docker services
+
+Set `DEVOS_RUNTIME_DOCKER_ENABLED=true` only when Docker Desktop is installed
+and running. The Runtime can then provision managed PostgreSQL 16 and Redis 7
+containers only. They use loopback-only random host ports; Runtime never
+accepts arbitrary Docker commands, images, ports, or environment variables.

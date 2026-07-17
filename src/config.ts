@@ -7,6 +7,7 @@ const environmentSchema = z.object({
   DEVOS_RUNTIME_PORT: z.coerce.number().int().min(1).max(65_535).default(3180),
   DEVOS_RUNTIME_TOKEN: z.string().min(32),
   DEVOS_RUNTIME_WORKSPACE_ROOTS: z.string().default(homedir()),
+  DEVOS_RUNTIME_DOCKER_ENABLED: z.enum(["true", "false"]).default("false"),
 });
 
 export type RuntimeConfig = {
@@ -14,6 +15,7 @@ export type RuntimeConfig = {
   port: number;
   token: string;
   workspaceRoots: string[];
+  dockerEnabled: boolean;
 };
 
 export function loadConfig(environment = process.env): RuntimeConfig {
@@ -26,5 +28,6 @@ export function loadConfig(environment = process.env): RuntimeConfig {
       .map((workspaceRoot) => workspaceRoot.trim())
       .filter(Boolean)
       .map((workspaceRoot) => resolve(workspaceRoot)),
+    dockerEnabled: parsed.DEVOS_RUNTIME_DOCKER_ENABLED === "true",
   };
 }

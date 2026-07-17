@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { ZodError, z } from "zod";
 import { loadConfig } from "./config.js";
 import { inspectWorkspace, runPackageJob } from "./jobs.js";
+import { getDockerStatus, provisionDockerService } from "./docker.js";
 import { coreCapabilities, optionalModules } from "./modules.js";
 
 const config = loadConfig();
@@ -44,6 +45,17 @@ app.post("/v1/jobs", async (request, reply) => {
     return await runPackageJob(request.body, config.workspaceRoots);
   } catch (error) {
     const message = error instanceof ZodError ? "Invalid local job request." : error instanceof Error ? error.message : "Local job failed.";
+    return reply.code(400).send({ message });
+  }
+});
+
+app.get("/v1/modules/docker/status", async () => getDockerStatus(config.dockerEnabled));
+
+app.post("/v1/modules/docker/provision", async (request, reply) => {
+  try {
+    return await provisionDockerService(request.body, config.dockerEnabled);
+  } catch (error) {
+    const message = error instanceof ZodError ? "Invalid Docker provisioning request." : error instanceof Error ? error.message : "Docker provisioning failed.";
     return reply.code(400).send({ message });
   }
 });

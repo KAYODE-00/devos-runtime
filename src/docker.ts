@@ -17,6 +17,11 @@ const services = {
 
 type DockerService = keyof typeof services;
 
+const serviceSchema = z.object({
+  projectId: z.string().uuid(),
+  service: z.enum(["postgres", "redis"]),
+});
+
 async function docker(args: string[]) {
   return executeFile("docker", args, { windowsHide: true, maxBuffer: 32_000 });
 }
@@ -87,4 +92,30 @@ export async function provisionDockerService(rawInput: unknown, enabled: boolean
     created: true,
     status: "ready" as const,
   };
+}
+
+export async function listDockerServices(projectId: string, enabled: boolean) {
+  if (!enabled) return [];
+  const parsedProjectId = z.string().uuid().parse(projectId);
+  const status = await getDockerStatus(enabled);
+  if (!status.available) throw new Error("Docker Desktop is not available on this device.");
+
+  return Promise.all((Object.keys(services) as DockerService[]).map(async (service) => {
+    const definition = services[service];
+    const name = containerName(parsedProjectId, service);
+    if (!(await containerExists(name))) return { service, status: "missing" as const };
+    const port = await mappedPort(name, definition.containerPort).catch(() => null);
+    return { service, status: "running" as const, port };
+  }));
+}
+
+export async function removeDockerService(rawInput: unknown, enabled: boolean) {
+  if (!enabled) throw new Error("Docker provisioning is disabled. Set DEVOS_RUNTIME_DOCKER_ENABLED=true to enable it.");
+  const input = serviceSchema.parse(rawInput);
+  const status = await getDockerStatus(enabled);
+  if (!status.available) throw new Error("Docker Desktop is not available on this device.");
+  const name = containerName(input.projectId, input.service);
+  if (!(await containerExists(name))) return { removed: false };
+  await docker(["rm", "--force", name]);
+  return { removed: true };
 }

@@ -3,7 +3,7 @@ import Fastify from "fastify";
 import { ZodError, z } from "zod";
 import { loadConfig } from "./config.js";
 import { inspectWorkspace, runPackageJob } from "./jobs.js";
-import { getDockerStatus, provisionDockerService } from "./docker.js";
+import { getDockerStatus, listDockerServices, provisionDockerService, removeDockerService } from "./docker.js";
 import { coreCapabilities, optionalModules } from "./modules.js";
 
 const config = loadConfig();
@@ -56,6 +56,24 @@ app.post("/v1/modules/docker/provision", async (request, reply) => {
     return await provisionDockerService(request.body, config.dockerEnabled);
   } catch (error) {
     const message = error instanceof ZodError ? "Invalid Docker provisioning request." : error instanceof Error ? error.message : "Docker provisioning failed.";
+    return reply.code(400).send({ message });
+  }
+});
+
+app.get("/v1/modules/docker/services", async (request, reply) => {
+  try {
+    const query = z.object({ projectId: z.string().uuid() }).parse(request.query);
+    return await listDockerServices(query.projectId, config.dockerEnabled);
+  } catch (error) {
+    return reply.code(400).send({ message: error instanceof Error ? error.message : "Invalid Docker service request." });
+  }
+});
+
+app.post("/v1/modules/docker/remove", async (request, reply) => {
+  try {
+    return await removeDockerService(request.body, config.dockerEnabled);
+  } catch (error) {
+    const message = error instanceof ZodError ? "Invalid Docker service request." : error instanceof Error ? error.message : "Docker service removal failed.";
     return reply.code(400).send({ message });
   }
 });

@@ -24,3 +24,7 @@ npm run dev
 Set the same `DEVOS_RUNTIME_TOKEN` in the local DevOS Web environment before
 connecting Web to Runtime. The initial API intentionally exposes only health,
 workspace inspection, and package-manager build/test jobs.
+
+Set `DEVOS_RUNTIME_WORKSPACE_ROOTS` to the folders that may contain DevOS
+projects. Runtime resolves real filesystem paths and rejects requests outside
+these roots, including paths reached through symlinks.

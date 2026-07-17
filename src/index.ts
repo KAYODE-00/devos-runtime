@@ -33,7 +33,7 @@ app.addHook("onRequest", async (request, reply) => {
 app.post("/v1/workspaces/inspect", async (request, reply) => {
   try {
     const body = z.object({ workspacePath: z.string().trim().min(1).max(2_048) }).parse(request.body);
-    return await inspectWorkspace(body.workspacePath);
+    return await inspectWorkspace(body.workspacePath, config.workspaceRoots);
   } catch (error) {
     return reply.code(400).send({ message: error instanceof Error ? error.message : "Invalid workspace request." });
   }
@@ -41,7 +41,7 @@ app.post("/v1/workspaces/inspect", async (request, reply) => {
 
 app.post("/v1/jobs", async (request, reply) => {
   try {
-    return await runPackageJob(request.body);
+    return await runPackageJob(request.body, config.workspaceRoots);
   } catch (error) {
     const message = error instanceof ZodError ? "Invalid local job request." : error instanceof Error ? error.message : "Local job failed.";
     return reply.code(400).send({ message });

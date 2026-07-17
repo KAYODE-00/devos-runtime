@@ -1,7 +1,7 @@
-import { access, stat } from "node:fs/promises";
+import { access, realpath, stat } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { z } from "zod";
 
 const jobSchema = z.object({
@@ -20,6 +20,28 @@ export type RuntimeJobResult = {
 async function exists(path: string) {
   await access(path, constants.F_OK);
   return true;
+}
+
+async function assertWorkspaceAllowed(workspacePath: string, workspaceRoots: string[]) {
+  const resolvedWorkspacePath = await realpath(workspacePath).catch(() => null);
+  if (!resolvedWorkspacePath) {
+    throw new Error("The configured workspace folder is unavailable on this device.");
+  }
+
+  const resolvedRoots = await Promise.all(
+    workspaceRoots.map((workspaceRoot) => realpath(workspaceRoot).catch(() => null))
+  );
+  const isAllowed = resolvedRoots.some((workspaceRoot) => {
+    if (!workspaceRoot) return false;
+    const relativePath = relative(workspaceRoot, resolvedWorkspacePath);
+    return relativePath === "" || (!relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) && relativePath !== ".." && !isAbsolute(relativePath));
+  });
+
+  if (!isAllowed) {
+    throw new Error("The workspace is outside the Runtime's approved workspace roots.");
+  }
+
+  return resolvedWorkspacePath;
 }
 
 async function packageManager(workspacePath: string) {
@@ -53,23 +75,25 @@ function run(program: string, args: string[], workspacePath: string, kind: Runti
   });
 }
 
-export async function runPackageJob(rawInput: unknown): Promise<RuntimeJobResult> {
+export async function runPackageJob(rawInput: unknown, workspaceRoots: string[]): Promise<RuntimeJobResult> {
   const input = jobSchema.parse(rawInput);
-  const metadata = await stat(input.workspacePath).catch(() => null);
-  if (!metadata?.isDirectory()) throw new Error("The configured workspace folder is unavailable on this device.");
+  const workspacePath = await assertWorkspaceAllowed(input.workspacePath, workspaceRoots);
+  const metadata = await stat(workspacePath);
+  if (!metadata.isDirectory()) throw new Error("The configured workspace folder is unavailable on this device.");
   try {
-    await exists(join(input.workspacePath, "package.json"));
+    await exists(join(workspacePath, "package.json"));
   } catch {
     throw new Error("Local build and test jobs require a package.json workspace.");
   }
-  const manager = await packageManager(input.workspacePath);
+  const manager = await packageManager(workspacePath);
   const args = manager === "yarn" ? [input.kind] : ["run", input.kind];
-  return run(manager, args, input.workspacePath, input.kind);
+  return run(manager, args, workspacePath, input.kind);
 }
 
-export async function inspectWorkspace(workspacePath: string) {
-  const metadata = await stat(workspacePath).catch(() => null);
-  if (!metadata?.isDirectory()) throw new Error("The configured workspace folder is unavailable on this device.");
+export async function inspectWorkspace(rawWorkspacePath: string, workspaceRoots: string[]) {
+  const workspacePath = await assertWorkspaceAllowed(rawWorkspacePath, workspaceRoots);
+  const metadata = await stat(workspacePath);
+  if (!metadata.isDirectory()) throw new Error("The configured workspace folder is unavailable on this device.");
   return {
     packageManager: await packageManager(workspacePath),
     path: workspacePath,

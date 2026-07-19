@@ -7,11 +7,16 @@ on `127.0.0.1:3180`.
 ## Responsibilities
 
 - Restricted local build and test jobs
-- Workspace inspection and runtime discovery
+- Workspace inspection, project requirement detection, and runtime health discovery
 - Future Git, Docker, Playwright, module, and local AI adapters
 
 The Runtime does not render a UI and is independent of Desktop, Web, and
 extension repositories.
+
+`POST /v1/workspaces/inspect` returns the detected package manager, project
+features (such as Prisma or Playwright), required runtimes, and the installed
+version/health of each required runtime. Detection is read-only; installation
+and update adapters can be added without allowing arbitrary shell commands.
 
 ## Local setup
 

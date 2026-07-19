@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
 import { z } from "zod";
+import { detectWorkspace } from "./runtimes.js";
 
 const jobSchema = z.object({
   kind: z.enum(["build", "test"]),
@@ -97,5 +98,6 @@ export async function inspectWorkspace(rawWorkspacePath: string, workspaceRoots:
   return {
     packageManager: await packageManager(workspacePath),
     path: workspacePath,
+    detection: await detectWorkspace(workspacePath),
   };
 }

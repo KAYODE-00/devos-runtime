@@ -4,6 +4,7 @@ export const coreCapabilities = [
   "local-test",
   "package-manager-detection",
   "runtime-detection",
+  "project-requirement-detection",
 ] as const;
 
 export type RuntimeCapability = (typeof coreCapabilities)[number];
